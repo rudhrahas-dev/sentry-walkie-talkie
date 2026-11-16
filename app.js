@@ -125,16 +125,21 @@
     masterGain.connect(analyser);
     analyser.connect(audioCtx.destination);
     
-    // Request Microphone access
+    // Request Microphone access with fallback for strict Android hardware
     try {
-      micStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          channelCount: 1
-        }
-      });
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            channelCount: 1
+          }
+        });
+      } catch (constraintErr) {
+        console.warn('Advanced audio constraints failed, trying basic audio: true', constraintErr);
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
       
       micSource = audioCtx.createMediaStreamSource(micStream);
       
@@ -154,7 +159,17 @@
       playChirp('activate');
     } catch (err) {
       console.warn('Microphone permission or audio init error:', err);
-      alert('Microphone access is required for Push-to-Talk. Please allow microphone permissions and refresh.');
+      let errMsg = 'Microphone access is required for Push-to-Talk.\n\n';
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        errMsg += 'Permission was denied. Tap the tune/lock icon in your browser address bar -> Permissions -> Allow Microphone, then refresh.';
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        errMsg += 'No microphone found on this device.';
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        errMsg += 'Microphone is currently in use by another app (e.g. phone call or recorder).';
+      } else {
+        errMsg += err.message || 'Please check browser site permissions and refresh.';
+      }
+      alert(errMsg);
     }
   }
 
