@@ -1,0 +1,22 @@
+{
+  "name": "Sentry Walkie-Talkie • Tactical PTT",
+  "short_name": "Sentry PTT",
+  "description": "Tactical Push-to-Talk Off-Grid Style Web Walkie-Talkie for Bitcoin Sentry",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0c10",
+  "theme_color": "#0a0c10",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
