@@ -296,6 +296,39 @@ body {
   100% { opacity: 1; }
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wake-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.wake-btn.active {
+  background: rgba(0, 229, 255, 0.12);
+  border-color: rgba(0, 229, 255, 0.4);
+  color: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+}
+
+.wake-icon {
+  font-size: 0.72rem;
+}
+
 .icon-btn {
   width: 36px;
   height: 36px;

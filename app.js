@@ -17,6 +17,7 @@
     volume: parseInt(localStorage.getItem('sentry_volume') || '100', 10),
     speakerEnabled: localStorage.getItem('sentry_speaker') !== 'false',
     chirpEnabled: localStorage.getItem('sentry_chirp') !== 'false',
+    alwaysOn: localStorage.getItem('sentry_always_on') !== 'false',
     broker: localStorage.getItem('sentry_broker') || 'hivemq',
     
     // Runtime transient states
@@ -41,6 +42,7 @@
   const netStatusText = $('netStatusText');
   const callsignBtn = $('callsignBtn');
   const callsignDisplay = $('callsignDisplay');
+  const wakeLockBtn = $('wakeLockBtn');
   const settingsBtn = $('settingsBtn');
   
   const freqDisplay = $('freqDisplay');
@@ -934,10 +936,75 @@
   });
 
   // ========================================================
+  // SCREEN WAKE LOCK (ALWAYS-ON DISPLAY)
+  // ========================================================
+  let wakeLock = null;
+
+  async function requestWakeLock() {
+    if (!('wakeLock' in navigator) || !state.alwaysOn) {
+      updateWakeLockUI(false);
+      return;
+    }
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => {
+        if (state.alwaysOn && document.visibilityState === 'visible') {
+          // Re-acquire if released by system
+          setTimeout(requestWakeLock, 1000);
+        } else {
+          updateWakeLockUI(false);
+        }
+      });
+      updateWakeLockUI(true);
+    } catch (err) {
+      console.warn('Screen Wake Lock request failed:', err);
+      updateWakeLockUI(false);
+    }
+  }
+
+  function releaseWakeLock() {
+    if (wakeLock) {
+      wakeLock.release().catch(() => {});
+      wakeLock = null;
+    }
+    updateWakeLockUI(false);
+  }
+
+  function updateWakeLockUI(isActive) {
+    if (!wakeLockBtn) return;
+    wakeLockBtn.classList.toggle('active', isActive);
+    const textEl = wakeLockBtn.querySelector('.wake-text');
+    if (textEl) {
+      textEl.textContent = isActive ? 'AWAKE' : 'SLEEP';
+    }
+  }
+
+  wakeLockBtn.addEventListener('click', async () => {
+    state.alwaysOn = !state.alwaysOn;
+    localStorage.setItem('sentry_always_on', state.alwaysOn);
+    if (state.alwaysOn) {
+      await requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+    playChirp('channel_click');
+  });
+
+  // Re-acquire wake lock when phone display turns on or user switches back to browser tab
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible' && state.alwaysOn) {
+      await requestWakeLock();
+    }
+  });
+
+  // ========================================================
   // START OVERLAY & INITIALIZATION
   // ========================================================
   activateAudioBtn.addEventListener('click', async () => {
     await initAudioEngine();
+    if (state.alwaysOn) {
+      await requestWakeLock();
+    }
     startOverlay.classList.add('fade-out');
     setTimeout(() => {
       startOverlay.style.display = 'none';
@@ -952,6 +1019,7 @@
   setChannel(state.channel, true);
   setMode(state.mode);
   updateSquadSecurityUI();
+  updateWakeLockUI(state.alwaysOn);
   
   // Start networking
   connectMqtt();
