@@ -147,10 +147,15 @@
       scriptProcessor = audioCtx.createScriptProcessor(2048, 1, 1);
       scriptProcessor.onaudioprocess = handleMicAudioProcess;
       
+      // Keep persistent references to avoid V8 garbage collection on mobile
+      window._sentryScriptProcessor = scriptProcessor;
+      
       micSource.connect(scriptProcessor);
+      
       // Connect to a dummy gain of 0 to keep processor running without feedback
       const muteNode = audioCtx.createGain();
       muteNode.gain.value = 0;
+      window._sentryMuteNode = muteNode;
       scriptProcessor.connect(muteNode);
       muteNode.connect(audioCtx.destination);
       
@@ -268,24 +273,21 @@
   }
 
   // Play incoming audio chunks gaplessly
-  function playIncomingAudio(pcm16Data) {
+  function playIncomingAudio(float32Data) {
     if (!audioCtx || !state.speakerEnabled) return;
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    
-    const float32 = new Float32Array(pcm16Data.length);
-    for (let i = 0; i < pcm16Data.length; i++) {
-      float32[i] = pcm16Data[i] / 32768.0;
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
     }
     
-    const audioBuffer = audioCtx.createBuffer(1, float32.length, SAMPLE_RATE);
-    audioBuffer.copyToChannel(float32, 0);
+    const audioBuffer = audioCtx.createBuffer(1, float32Data.length, SAMPLE_RATE);
+    audioBuffer.copyToChannel(float32Data, 0);
     
     const sourceNode = audioCtx.createBufferSource();
     sourceNode.buffer = audioBuffer;
     sourceNode.connect(masterGain);
     
     const currentTime = audioCtx.currentTime;
-    if (nextPlayTime < currentTime) {
+    if (nextPlayTime < currentTime || nextPlayTime > currentTime + 0.35) {
       nextPlayTime = currentTime + 0.02; // Small 20ms safety lead
     }
     
@@ -408,8 +410,10 @@
     return Math.abs(hash);
   }
 
+  const HEADER_LEN = 18;
+
   function buildHeader(type) {
-    const header = new Uint8Array(17);
+    const header = new Uint8Array(HEADER_LEN);
     header[0] = type;
     
     // Channel (2 bytes)
@@ -434,6 +438,9 @@
     header[15] = (state.sequenceNum >> 8) & 0xFF;
     header[16] = state.sequenceNum & 0xFF;
     
+    // Byte 17: Padding to keep audio data on an even 2-byte boundary
+    header[17] = 0x00;
+    
     return header;
   }
 
@@ -451,7 +458,7 @@
   function sendAudioPacket(pcm16) {
     if (!mqttClient || !mqttClient.isConnected()) return;
     const header = buildHeader(0x02);
-    const pcmBytes = new Uint8Array(pcm16.buffer);
+    const pcmBytes = new Uint8Array(pcm16.buffer, pcm16.byteOffset, pcm16.byteLength);
     
     // Combine header + audio
     const packet = new Uint8Array(header.length + pcmBytes.length);
@@ -466,64 +473,89 @@
   }
 
   function onMqttMessageArrived(message) {
-    const payload = new Uint8Array(message.payloadBytes);
-    if (payload.length < 17) return;
-    
-    const type = payload[0];
-    const incomingChannel = (payload[1] << 8) | payload[2];
-    const incomingPinHash = (payload[3] << 24) | (payload[4] << 16) | (payload[5] << 8) | payload[6];
-    
-    // Extract callsign
-    let senderCallsign = '';
-    for (let i = 7; i < 15; i++) {
-      if (payload[i] > 32) senderCallsign += String.fromCharCode(payload[i]);
-    }
-    if (!senderCallsign) senderCallsign = 'UNKNOWN';
-    
-    // Ignore my own broadcast
-    if (senderCallsign.trim() === state.callsign.substring(0, 8).trim()) return;
-    
-    // Squad PIN check: If my channel has a PIN or remote has a PIN, hashes must match!
-    const myPinHash = getPinHash(state.squadPin);
-    if (myPinHash !== incomingPinHash) {
-      // Ignored: Mismatched private squad PIN
-      return;
-    }
-    
-    // Channel filter check
-    if (state.mode === 'squad' && incomingChannel !== state.channel && !message.destinationName.endsWith('allcall')) {
-      return; // Ignore transmissions from other channels when locked to squad
-    }
-    
-    const paddedCh = String(incomingChannel).padStart(3, '0');
-    
-    // Handle packet types
-    if (type === 0x01) {
-      // PTT_START
-      state.isReceiving = true;
-      state.activeRemotePeer = senderCallsign;
-      updateTransceiverUI('receiving', `RX: ${senderCallsign} (CH-${paddedCh})`);
-      pttButton.classList.add('receiving-state');
-    } else if (type === 0x02) {
-      // AUDIO_CHUNK
-      state.isReceiving = true;
-      state.activeRemotePeer = senderCallsign;
-      updateTransceiverUI('receiving', `RX: ${senderCallsign} (CH-${paddedCh})`);
-      pttButton.classList.add('receiving-state');
+    try {
+      const payload = new Uint8Array(message.payloadBytes);
+      if (payload.length < 17) return;
       
-      const audioBytes = payload.subarray(17);
-      const pcm16 = new Int16Array(audioBytes.buffer, audioBytes.byteOffset, audioBytes.byteLength / 2);
-      playIncomingAudio(pcm16);
+      const type = payload[0];
+      const incomingChannel = (payload[1] << 8) | payload[2];
+      const incomingPinHash = (payload[3] << 24) | (payload[4] << 16) | (payload[5] << 8) | payload[6];
       
-      // Auto-reset RX if no packet for 1.2 seconds
-      clearTimeout(state.rxTimeoutTimer);
-      state.rxTimeoutTimer = setTimeout(() => {
+      // Extract callsign
+      let senderCallsign = '';
+      for (let i = 7; i < 15; i++) {
+        if (payload[i] > 32) senderCallsign += String.fromCharCode(payload[i]);
+      }
+      if (!senderCallsign) senderCallsign = 'UNKNOWN';
+      
+      // Ignore my own broadcast
+      if (senderCallsign.trim() === state.callsign.substring(0, 8).trim()) return;
+      
+      // Squad PIN check: If my channel has a PIN or remote has a PIN, hashes must match!
+      const myPinHash = getPinHash(state.squadPin);
+      if (myPinHash !== incomingPinHash) {
+        // Ignored: Mismatched private squad PIN
+        return;
+      }
+      
+      // Channel filter check
+      if (state.mode === 'squad' && incomingChannel !== state.channel && !message.destinationName.endsWith('allcall')) {
+        return; // Ignore transmissions from other channels when locked to squad
+      }
+      
+      const paddedCh = String(incomingChannel).padStart(3, '0');
+      
+      // Ensure AudioContext is awake on receiving phone
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      
+      // Handle packet types
+      if (type === 0x01) {
+        // PTT_START
+        state.isReceiving = true;
+        state.activeRemotePeer = senderCallsign;
+        updateTransceiverUI('receiving', `RX: ${senderCallsign} (CH-${paddedCh})`);
+        pttButton.classList.add('receiving-state');
+        if (audioCtx) {
+          nextPlayTime = audioCtx.currentTime + 0.02;
+        }
+      } else if (type === 0x02) {
+        // AUDIO_CHUNK
+        state.isReceiving = true;
+        state.activeRemotePeer = senderCallsign;
+        updateTransceiverUI('receiving', `RX: ${senderCallsign} (CH-${paddedCh})`);
+        pttButton.classList.add('receiving-state');
+        
+        // Support both 17-byte (legacy) and 18-byte headers seamlessly
+        const offset = (payload.length > 18 && payload[17] === 0x00) ? 18 : 17;
+        const audioByteLength = payload.length - offset;
+        const sampleCount = Math.floor(audioByteLength / 2);
+        
+        if (sampleCount > 0) {
+          const float32 = new Float32Array(sampleCount);
+          const dataView = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+          
+          for (let i = 0; i < sampleCount; i++) {
+            const int16Val = dataView.getInt16(offset + (i * 2), true);
+            float32[i] = int16Val / 32768.0;
+          }
+          
+          playIncomingAudio(float32);
+        }
+        
+        // Auto-reset RX if no packet for 1.2 seconds
+        clearTimeout(state.rxTimeoutTimer);
+        state.rxTimeoutTimer = setTimeout(() => {
+          handleRxEnd();
+        }, 1200);
+      } else if (type === 0x03) {
+        // PTT_END
         handleRxEnd();
-      }, 1200);
-    } else if (type === 0x03) {
-      // PTT_END
-      handleRxEnd();
-      playChirp('ptt_release');
+        playChirp('ptt_release');
+      }
+    } catch (err) {
+      console.error('MQTT message processing error:', err);
     }
   }
 
