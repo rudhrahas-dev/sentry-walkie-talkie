@@ -1,6 +1,6 @@
 /**
  * SENTRY PTT • Tactical Walkie-Talkie Audio & Network Engine
- * Visual Theme & Architecture: Bitcoin Sentry Tactical Cockpit
+ * Visual Theme & Architecture: Tactical Cockpit
  */
 
 (() => {

@@ -1,6 +1,6 @@
 # Sentry PTT • Tactical Walkie-Talkie
 
-Tactical, off-grid aesthetic Push-to-Talk (PTT) web walkie-talkie matching the **Bitcoin Sentry** cockpit visual identity.
+Tactical, off-grid aesthetic Push-to-Talk (PTT) web walkie-talkie.
 
 Designed for instant mobile deployment with zero app-store friction — anyone can open the link in their mobile browser, tap to initialize audio, and immediately communicate across tactical channels.
 
@@ -8,7 +8,7 @@ Designed for instant mobile deployment with zero app-store friction — anyone c
 
 ## ⚡ Features
 
-* **Bitcoin Sentry Cockpit Theme:** Deep space cockpit palette (`#0a0c10`), armored cards (`#11151f`), tactical borders, and neon indicators (Cyan, Green, Amber, Red).
+* **Tactical Cockpit Theme:** Deep space cockpit palette (`#0a0c10`), armored cards (`#11151f`), tactical borders, and neon indicators (Cyan, Green, Amber, Red).
 * **3-Digit Frequency Synthesizer (CH 000 – 999):**
   * Steppers: `[-10]`, `[-1]`, `[+1]`, `[+10]` with automatic wraparound.
   * Direct 3-digit digital dialer keypad (tap the channel box to open).
