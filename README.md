@@ -1,64 +1,58 @@
 # Sentry PTT • Tactical Walkie-Talkie
 
-Tactical, off-grid aesthetic Push-to-Talk (PTT) web walkie-talkie.
+A lightweight, low-latency Push-to-Talk (PTT) web walkie-talkie designed for instant group voice communication across virtual channels.
 
-Designed for instant mobile deployment with zero app-store friction — anyone can open the link in their mobile browser, tap to initialize audio, and immediately communicate across tactical channels.
+No account registration, no app store installations, and zero configuration required — open the link in any mobile or desktop browser and communicate instantly.
 
 ---
 
-## ⚡ Features
+## ⚡ Key Features
 
-* **Tactical Cockpit Theme:** Deep space cockpit palette (`#0a0c10`), armored cards (`#11151f`), tactical borders, and neon indicators (Cyan, Green, Amber, Red).
-* **3-Digit Frequency Synthesizer (CH 000 – 999):**
-  * Steppers: `[-10]`, `[-1]`, `[+1]`, `[+10]` with automatic wraparound.
-  * Direct 3-digit digital dialer keypad (tap the channel box to open).
-  * Synthetic UHF frequency readout (e.g. `CH-042 -> 446.0525 MHz`).
+* **Tactical Cockpit Interface:** High-contrast dark cockpit aesthetic (`#0a0c10`) with armored HUD panels, glowing status readouts, and tactical telemetry indicators.
+* **1,000-Channel Frequency Synthesizer (CH 000 – 999):**
+  * Direct 3-digit numeric dialer pad (tap the channel display to tune).
+  * Quick-step adjustment buttons (`-10`, `-1`, `+1`, `+10`) with auto-wraparound.
+  * Synthetic UHF frequency mapping readout (e.g., `CH-042` $\rightarrow$ `446.0525 MHz`).
 * **Dual Operation Modes:**
-  * **SQUAD LOCK:** Tunes exclusively to the selected 3-digit channel.
-  * **ALL-CALL (Open Broadcast):** Monitors all channels within range and broadcasts globally.
-* **Squad Privacy / 4-Digit PIN:**
-  * Set an optional PIN for private squad communications. Only operators with the matching PIN can decode and hear voice on that channel.
-* **Tactical Push-and-Hold Button:**
-  * Instant response with `pointerdown` / `pointerup` (touch and mouse).
-  * Desktop keyboard shortcut: Press and hold `Spacebar`.
-  * Visual feedback: Glowing high-intensity red ring with pulse shockwaves during transmission.
+  * **SQUAD LOCK:** Tunes exclusively to a selected channel for isolated team communication.
+  * **ALL-CALL:** Open broadcast mode that monitors all active channels and broadcasts globally.
+* **Private Squad PIN (Encrypted Rooms):**
+  * Set an optional 4-digit PIN for private channels. Voice packets are verified so only operators with the matching PIN can decode and listen to transmissions.
+* **Tactical Push-and-Hold (PTT) Controls:**
+  * Instant response touch/pointer gesture (`pointerdown` / `pointerup`).
+  * Desktop keyboard shortcut: Press and hold `Spacebar` to transmit.
+  * Visual feedback: High-intensity glowing red shockwave ring when transmitting; green status ring when receiving.
 * **Live Oscilloscope & LED VU Meter:**
-  * Real-time audio waveform rendered on an authentic phosphor oscilloscope canvas.
-  * Segmented LED VU meter reflecting mic input and incoming voice levels.
-* **Always-On Speaker & Volume Knob:**
-  * Tactical slider with 0% to 150% volume boost.
-  * Instant speaker mute/unmute button.
-  * Tactical roger beeps and squelch tail sound effects (can be toggled on/off).
-* **Installable PWA:**
-  * Works offline and can be added directly to the Android or iOS home screen.
+  * Real-time audio waveform visualizer rendered on an authentic phosphor oscilloscope canvas.
+  * 16-segment LED VU meter reflecting microphone decibel levels and incoming audio.
+* **Always-On Screen Wake Lock:**
+  * Built-in `⚡ AWAKE` toggle using the Screen Wake Lock API to prevent mobile displays from sleeping or locking during operations.
+* **Speaker & Volume Boost:**
+  * Integrated volume slider offering **up to 150% audio boost**.
+  * Instant speaker mute/unmute toggle.
+  * Synthesized tactile **Roger Beep & Squelch** audio effects (toggleable via `CHIRP`).
+* **Progressive Web App (PWA):**
+  * Installable directly to Android or iOS home screens with standalone display mode and offline asset caching.
 
 ---
 
-## 🚀 How to Host on GitHub Pages
+## 📖 How to Use
 
-1. **Create a GitHub Repository:**
-   * Create a new repository on GitHub named `sentry-walkie-talkie` (or any name you prefer) under your account.
-2. **Push the Code:**
-   ```bash
-   cd /home/pradeep/Projects/sentry-walkie-talkie
-   git remote add origin https://github.com/<your-username>/<repo-name>.git
-   git branch -M main
-   git push -u origin main
-   ```
-3. **Enable GitHub Pages:**
-   * Go to repository **Settings** -> **Pages**.
-   * Under **Branch**, select `main` and `/ (root)`, then click **Save**.
-   * Your site will be live at:
-     ```
-     https://<your-username>.github.io/<repo-name>/
-     ```
+1. **Open the App:** Navigate to the web app URL on any smartphone, tablet, or computer.
+2. **Initialize Audio:** Tap **"INITIALIZE COMMS"** on the startup screen to activate the Web Audio engine and allow microphone access.
+3. **Select Your Channel:**
+   * Use the `+` / `-` buttons or tap the channel drum to dial any 3-digit frequency (e.g., `042`).
+   * For team privacy, tap **SET PIN** to configure a shared 4-digit passcode.
+   * To talk to everyone in range regardless of channel, tap **ALL-CALL**.
+4. **Push to Talk:**
+   * **Hold** the large center button (or hold `Spacebar` on desktop) to speak.
+   * **Release** the button to stop transmitting and listen for replies.
 
 ---
 
-## 📱 How to Use at the Event
+## 🔒 Privacy & Architecture
 
-1. Share your GitHub Pages URL or a QR code linking to it.
-2. Attendees open the link on their mobile phones (Chrome, Safari, Firefox).
-3. Tap **"INITIALIZE COMMS"** to enable the Web Audio transceiver and grant microphone access.
-4. Agree on a channel (e.g., `042`) or use `ALL-CALL`.
-5. Hold the large center button to speak — release to listen!
+* **No Accounts or Logins:** Fully anonymous operator callsigns (customizable in settings).
+* **Transport Encryption:** All audio packets are transmitted over encrypted TLS WebSockets (`WSS`).
+* **Lightweight Footprint:** Built entirely with pure Vanilla JavaScript, CSS3, and HTML5 Web Audio API — consuming under 40 MB of RAM with zero third-party framework overhead.
+* **Wide Device Support:** Compatible with standard mobile browsers (Chrome, Safari, Firefox, Edge, Samsung Internet) and low-memory Android devices.
