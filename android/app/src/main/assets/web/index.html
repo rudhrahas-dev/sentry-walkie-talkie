@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Sentry PTT • Tactical Walkie-Talkie</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0a0c10">
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ======================================================== -->
+  <!-- AUDIO ACTIVATION OVERLAY (Browser Autoplay Requirement)  -->
+  <!-- ======================================================== -->
+  <div id="startOverlay" class="start-overlay">
+    <div class="start-card">
+      <div class="tactical-ring">
+        <svg class="radio-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+          <line x1="12" y1="19" x2="12" y2="23"></line>
+          <line x1="8" y1="23" x2="16" y2="23"></line>
+        </svg>
+      </div>
+      <div class="app-title">SENTRY PTT</div>
+      <div class="app-subtitle">TACTICAL WALKIE-TALKIE</div>
+      <div class="tech-badge">UHF DIGITAL ENCRYPTED VOICE</div>
+      <p class="start-desc">Tap below to activate audio transceiver & connect to tactical mesh.</p>
+      <button id="activateAudioBtn" class="activate-btn">
+        <span class="btn-glow"></span>
+        <span class="btn-text">INITIALIZE COMMS</span>
+      </button>
+      <div class="start-hint">Microphone permission required for PTT</div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MAIN TACTICAL COCKPIT                                    -->
+  <!-- ======================================================== -->
+  <div class="cockpit-container">
+    
+    <!-- Top Cockpit Header -->
+    <header class="cockpit-header">
+      <div class="header-left">
+        <button id="callsignBtn" class="callsign-badge" title="Tap to change callsign">
+          <span class="badge-label">UNIT</span>
+          <span id="callsignDisplay" class="badge-val">SENTRY-01</span>
+        </button>
+      </div>
+
+      <div class="header-center">
+        <div id="netStatusBadge" class="net-badge connecting">
+          <span class="status-dot"></span>
+          <span id="netStatusText">CONNECTING...</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <button id="wakeLockBtn" class="wake-btn active" title="Toggle Keep Screen Awake (Always On)">
+          <span class="wake-icon">⚡</span>
+          <span class="wake-text">AWAKE</span>
+        </button>
+        <button id="settingsBtn" class="icon-btn" aria-label="Settings" title="Settings & Squad PIN">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Channel & Frequency Synthesizer Panel -->
+    <section class="synth-panel">
+      <div class="synth-header">
+        <span class="synth-label">TACTICAL FREQUENCY SYNTHESIZER</span>
+        <span id="freqDisplay" class="synth-freq">446.042 MHz</span>
+      </div>
+
+      <!-- 3-Digit Drum Display -->
+      <div class="channel-drum-wrap" id="channelDrumTrigger" title="Tap to enter 3-digit channel">
+        <div class="drum-box">
+          <span class="drum-tag">CH</span>
+          <div class="drum-digits">
+            <span id="dHundreds" class="drum-digit">0</span>
+            <span id="dTens" class="drum-digit">4</span>
+            <span id="dOnes" class="drum-digit">2</span>
+          </div>
+          <span class="drum-edit-hint">TAP TO DIAL</span>
+        </div>
+      </div>
+
+      <!-- Step Controls (-10, -1, +1, +10) -->
+      <div class="channel-steppers">
+        <button id="stepDown10" class="step-btn" title="Minus 10">-10</button>
+        <button id="stepDown1" class="step-btn" title="Minus 1">-1</button>
+        <div class="step-divider"></div>
+        <button id="stepUp1" class="step-btn" title="Plus 1">+1</button>
+        <button id="stepUp10" class="step-btn" title="Plus 10">+10</button>
+      </div>
+    </section>
+
+    <!-- Mode Selector: All-Call (Open) vs Specific Channel (Squad) -->
+    <section class="mode-panel">
+      <div class="mode-toggle-group">
+        <button id="modeAllCall" class="mode-btn" title="Listen and talk across all open channels">
+          <span class="mode-icon">🌐</span>
+          <span class="mode-text">ALL-CALL</span>
+          <span class="mode-sub">OPEN BROADCAST</span>
+        </button>
+
+        <button id="modeSquad" class="mode-btn active" title="Lock into this specific channel">
+          <span class="mode-icon">🎯</span>
+          <span class="mode-text">SQUAD LOCK</span>
+          <span class="mode-sub">CH-042 ONLY</span>
+        </button>
+      </div>
+
+      <!-- Squad Security Status Bar -->
+      <div class="squad-security-bar">
+        <div class="sec-left">
+          <span class="sec-label">SQUAD PRIVACY:</span>
+          <span id="squadSecStatus" class="sec-val open">PUBLIC / OPEN</span>
+        </div>
+        <button id="quickPinBtn" class="sec-pin-btn">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <span id="pinBtnText">SET PIN</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Tactical Radar / Oscilloscope & Live Audio HUD -->
+    <section class="hud-monitor">
+      <div class="hud-top-bar">
+        <span id="transceiverState" class="hud-state standby">● STANDBY (RX)</span>
+        <span id="activeSpeakerDisplay" class="hud-active-peer">SQUELCH CLOSED</span>
+      </div>
+
+      <!-- Live Oscilloscope Canvas -->
+      <div class="scope-wrapper">
+        <canvas id="scopeCanvas" width="360" height="70"></canvas>
+        <div class="scope-grid"></div>
+      </div>
+
+      <!-- Segmented LED VU Meter -->
+      <div class="vu-meter">
+        <div class="vu-bar" data-level="1"></div>
+        <div class="vu-bar" data-level="2"></div>
+        <div class="vu-bar" data-level="3"></div>
+        <div class="vu-bar" data-level="4"></div>
+        <div class="vu-bar" data-level="5"></div>
+        <div class="vu-bar" data-level="6"></div>
+        <div class="vu-bar" data-level="7"></div>
+        <div class="vu-bar" data-level="8"></div>
+        <div class="vu-bar" data-level="9"></div>
+        <div class="vu-bar" data-level="10"></div>
+        <div class="vu-bar" data-level="11"></div>
+        <div class="vu-bar" data-level="12"></div>
+        <div class="vu-bar warning" data-level="13"></div>
+        <div class="vu-bar warning" data-level="14"></div>
+        <div class="vu-bar peak" data-level="15"></div>
+        <div class="vu-bar peak" data-level="16"></div>
+      </div>
+    </section>
+
+    <!-- Large Push-and-Hold to Talk (PTT) Section -->
+    <section class="ptt-section">
+      <div class="ptt-outer-ring">
+        <div class="ptt-pulse-ring" id="pttPulseRing"></div>
+        <button id="pttButton" class="ptt-main-btn" aria-label="Push to talk button">
+          <div class="ptt-bevel">
+            <div class="ptt-core">
+              <svg class="ptt-mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+              <div class="ptt-label">HOLD TO TALK</div>
+              <div id="pttSubText" class="ptt-subtext">TRANSMIT (TX)</div>
+            </div>
+          </div>
+        </button>
+      </div>
+      <div class="ptt-touch-hint">PRESS & HOLD SCREEN TO BROADCAST</div>
+    </section>
+
+    <!-- Always-on Speaker & Volume Control -->
+    <footer class="cockpit-footer">
+      <div class="audio-control-bar">
+        
+        <!-- Speaker Mute/Unmute Toggle -->
+        <button id="speakerToggleBtn" class="speaker-btn active" title="Toggle speaker output">
+          <svg id="speakerIconOn" class="spk-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+          </svg>
+          <svg id="speakerIconOff" class="spk-icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <line x1="23" y1="9" x2="17" y2="15"></line>
+            <line x1="17" y1="9" x2="23" y2="15"></line>
+          </svg>
+          <span id="speakerLabel">SPKR ON</span>
+        </button>
+
+        <!-- Volume Slider -->
+        <div class="volume-slider-box">
+          <span class="vol-icon">🔈</span>
+          <input type="range" id="volumeSlider" min="0" max="150" value="100" class="tactical-slider">
+          <span class="vol-icon">🔊</span>
+          <span id="volumePercent" class="vol-val">100%</span>
+        </div>
+
+        <!-- Tactical Roger Beep Toggle -->
+        <button id="chirpToggleBtn" class="chirp-btn active" title="Toggle radio squelch & roger beep audio effect">
+          CHIRP
+        </button>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: DIRECT 3-DIGIT CHANNEL DIALER                     -->
+  <!-- ======================================================== -->
+  <div id="channelModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-title">TUNE CHANNEL (000 - 999)</span>
+        <button id="closeChannelModal" class="modal-close">&times;</button>
+      </div>
+
+      <div class="channel-input-preview">
+        <span class="chip-label">TARGET CH:</span>
+        <span id="numpadBuffer" class="numpad-digits">042</span>
+      </div>
+
+      <div class="numpad-grid">
+        <button class="num-key" data-digit="1">1</button>
+        <button class="num-key" data-digit="2">2</button>
+        <button class="num-key" data-digit="3">3</button>
+        <button class="num-key" data-digit="4">4</button>
+        <button class="num-key" data-digit="5">5</button>
+        <button class="num-key" data-digit="6">6</button>
+        <button class="num-key" data-digit="7">7</button>
+        <button class="num-key" data-digit="8">8</button>
+        <button class="num-key" data-digit="9">9</button>
+        <button class="num-key action" id="numpadClear">CLR</button>
+        <button class="num-key" data-digit="0">0</button>
+        <button class="num-key action" id="numpadBack">⌫</button>
+      </div>
+
+      <button id="confirmChannelBtn" class="modal-primary-btn">TUNE TO FREQUENCY</button>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: SETTINGS & SQUAD PIN CONFIGURATION                -->
+  <!-- ======================================================== -->
+  <div id="settingsModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-title">SENTRY COMMS CONFIG</span>
+        <button id="closeSettingsModal" class="modal-close">&times;</button>
+      </div>
+
+      <div class="config-section">
+        <label class="config-label">OPERATOR CALLSIGN</label>
+        <input type="text" id="callsignInput" class="config-input" maxlength="16" placeholder="e.g. SENTRY-01">
+      </div>
+
+      <div class="config-section">
+        <label class="config-label">PRIVATE SQUAD 4-DIGIT PIN (OPTIONAL)</label>
+        <div class="pin-subtext">If set, only operators with this matching PIN can hear transmissions on this channel. Leave empty for open channel.</div>
+        <input type="password" id="squadPinInput" class="config-input mono" maxlength="8" placeholder="e.g. 1337 (Leave blank for public)">
+      </div>
+
+      <div class="config-section" id="transceiverModeSection">
+        <label class="config-label">RADIO TRANSCEIVER ARCHITECTURE</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+          <button type="button" id="transceiverCloudBtn" class="mode-btn active" style="padding: 10px 8px; text-align: center;">
+            <span class="mode-text" style="font-size: 0.72rem;">🌐 CLOUD MESH</span>
+            <span class="mode-sub">WEB & APPLE IPHONE</span>
+          </button>
+          <button type="button" id="transceiverOffgridBtn" class="mode-btn" style="padding: 10px 8px; text-align: center;">
+            <span class="mode-text" style="font-size: 0.72rem;">📡 OFF-GRID RADIO</span>
+            <span class="mode-sub">DIRECT P2P (NEARBY)</span>
+          </button>
+        </div>
+        <div class="pin-subtext" id="transceiverHintText" style="margin-top: 6px;">
+          Cloud Mesh provides worldwide voice comms interoperable with Web browsers and Apple iPhones.
+        </div>
+      </div>
+
+      <div class="config-section">
+        <label class="config-label">TACTICAL MESH BROKER</label>
+        <select id="brokerSelect" class="config-select">
+          <option value="hivemq" selected>HiveMQ Public Mesh (Global / SSL 8884)</option>
+          <option value="emqx">EMQX Public Mesh (Global / SSL 8084)</option>
+        </select>
+      </div>
+
+      <div class="config-section">
+        <div class="status-summary">
+          <div>PEER ID: <span id="localPeerId" class="mono text-cyan">---</span></div>
+          <div>AUDIO CODEC: <span class="mono text-green">16 kHz Low-Latency PCM</span></div>
+          <div>ENCRYPTION: <span class="mono text-gold">AES / Transport TLS</span></div>
+        </div>
+      </div>
+
+      <button id="saveSettingsBtn" class="modal-primary-btn">APPLY CONFIGURATION</button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="paho-mqtt.min.js"></script>
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(console.error);
+      });
+    }
+  </script>
+</body>
+</html>

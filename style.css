@@ -1195,3 +1195,30 @@ body {
 .text-cyan { color: var(--neon-cyan); }
 .text-green { color: var(--neon-green); }
 .text-gold { color: var(--neon-gold); }
+
+.apk-download-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(0, 229, 255, 0.08);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  border-radius: 10px;
+  padding: 10px 18px;
+  color: var(--neon-cyan);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-decoration: none;
+  margin-top: 14px;
+  transition: all 0.2s ease;
+}
+
+.apk-download-btn:hover {
+  background: rgba(0, 229, 255, 0.16);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.25);
+  transform: translateY(-1px);
+}
+

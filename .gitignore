@@ -2,3 +2,10 @@ cockpit_screen.png
 cockpit_unlocked.png
 cockpit_live.png
 .DS_Store
+
+# Android build outputs & local config
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.hprof
