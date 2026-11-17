@@ -60,6 +60,14 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
             }
+
+            pttService?.currentStatus?.let { status ->
+                runOnUiThread {
+                    webView.evaluateJavascript(
+                        "if(window.onNativeStatus) window.onNativeStatus('$status');", null
+                    )
+                }
+            }
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -130,7 +138,15 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        webView.webViewClient = WebViewClient()
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                val status = pttService?.currentStatus ?: "CONNECTING..."
+                webView.evaluateJavascript(
+                    "if(window.onNativeStatus) window.onNativeStatus('$status');", null
+                )
+            }
+        }
         webView.addJavascriptInterface(WebAppInterface { pttService }, "AndroidBridge")
         webView.loadUrl("file:///android_asset/web/index.html")
     }

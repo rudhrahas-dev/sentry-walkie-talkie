@@ -36,6 +36,9 @@ class SentryPttService : Service() {
         private set
     private var sequenceNum: Short = 0
 
+    var currentStatus: String = "CONNECTING..."
+        private set
+
     // Callback listeners for UI
     var onPacketReceivedListener: ((ParsedPacket) -> Unit)? = null
     var onStatusChangedListener: ((String) -> Unit)? = null
@@ -82,14 +85,20 @@ class SentryPttService : Service() {
     private fun initMeshManagers() {
         cloudMesh = CloudMeshManager(
             onPacketReceived = { packet -> handleIncomingPacket(packet) },
-            onStatusChanged = { status -> onStatusChangedListener?.invoke(status) }
+            onStatusChanged = { status ->
+                currentStatus = status
+                onStatusChangedListener?.invoke(status)
+            }
         ).apply { connect() }
 
         nearbyMesh = NearbyMeshManager(
             context = this,
             callsign = callsign,
             onPacketReceived = { packet -> handleIncomingPacket(packet) },
-            onStatusChanged = { status -> onStatusChangedListener?.invoke(status) }
+            onStatusChanged = { status ->
+                currentStatus = status
+                onStatusChangedListener?.invoke(status)
+            }
         )
     }
 

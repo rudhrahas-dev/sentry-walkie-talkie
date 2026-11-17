@@ -53,5 +53,8 @@ class WebAppInterface(private val getService: () -> SentryPttService?) {
     }
 
     @JavascriptInterface
+    fun getStatus(): String = getService()?.currentStatus ?: "CONNECTING..."
+
+    @JavascriptInterface
     fun isNativeApp(): Boolean = true
 }

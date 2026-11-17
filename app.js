@@ -1082,7 +1082,14 @@
   };
 
   window.onNativeStatus = (statusText) => {
-    updateNetStatus('online', statusText);
+    let modeClass = 'online';
+    const upper = (statusText || '').toUpperCase();
+    if (upper.includes('CONNECTING') || upper.includes('RETRYING') || upper.includes('TUNING')) {
+      modeClass = 'connecting';
+    } else if (upper.includes('OFFLINE') || upper.includes('DISCONNECTED')) {
+      modeClass = 'offline';
+    }
+    updateNetStatus(modeClass, statusText);
   };
 
   window.onNativePtt = (isDown) => {
@@ -1116,6 +1123,9 @@
 
     // Sync state with native service
     try {
+      if (window.AndroidBridge.getStatus) {
+        window.onNativeStatus(window.AndroidBridge.getStatus());
+      }
       window.AndroidBridge.setCallsign(state.callsign);
       window.AndroidBridge.setSquadPin(state.squadPin);
       window.AndroidBridge.setChannel(state.channel);

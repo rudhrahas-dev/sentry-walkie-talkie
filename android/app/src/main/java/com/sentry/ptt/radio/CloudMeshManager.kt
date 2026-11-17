@@ -3,6 +3,8 @@ package com.sentry.ptt.radio
 import android.util.Log
 import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
+import java.net.Inet4Address
+import java.net.InetAddress
 import java.util.UUID
 
 class CloudMeshManager(
@@ -12,65 +14,96 @@ class CloudMeshManager(
 
     private var mqttClient: MqttClient? = null
     private val clientId = "sentry_android_" + UUID.randomUUID().toString().take(8)
-    private val brokerUrl = "tcp://broker.hivemq.com:1883"
     
     private var currentChannel: Int = 42
     private var isAllCall: Boolean = false
-    private var isConnected = false
+    @Volatile var isConnected: Boolean = false
+        private set
+    @Volatile private var isRunning = false
+
+    private fun resolveBrokerUrl(): String {
+        return try {
+            val addrs = InetAddress.getAllByName("broker.hivemq.com")
+            val ipv4 = addrs.firstOrNull { it is Inet4Address }?.hostAddress
+            if (ipv4 != null) "tcp://$ipv4:1883" else "tcp://broker.hivemq.com:1883"
+        } catch (e: Exception) {
+            "tcp://broker.hivemq.com:1883"
+        }
+    }
 
     fun connect() {
+        if (isConnected || isRunning) return
+        isRunning = true
+
         Thread {
-            try {
-                onStatusChanged("CONNECTING (CLOUD)...")
-                mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence())
-                
-                val options = MqttConnectOptions().apply {
-                    isCleanSession = true
-                    connectionTimeout = 10
-                    keepAliveInterval = 20
-                    isAutomaticReconnect = true
+            var attempt = 0
+            while (isRunning && !isConnected) {
+                try {
+                    onStatusChanged("CONNECTING...")
+                    val brokerUrl = resolveBrokerUrl()
+                    Log.i("CloudMesh", "Connecting to MQTT at $brokerUrl (attempt ${attempt + 1})...")
+
+                    val client = MqttClient(brokerUrl, clientId, MemoryPersistence())
+                    val options = MqttConnectOptions().apply {
+                        isCleanSession = true
+                        connectionTimeout = 8
+                        keepAliveInterval = 20
+                        isAutomaticReconnect = true
+                    }
+
+                    client.setCallback(object : MqttCallbackExtended {
+                        override fun connectComplete(reconnect: Boolean, serverURI: String?) {
+                            isConnected = true
+                            onStatusChanged("MESH ACTIVE")
+                            subscribe()
+                        }
+
+                        override fun connectionLost(cause: Throwable?) {
+                            isConnected = false
+                            onStatusChanged("RECONNECTING...")
+                        }
+
+                        override fun messageArrived(topic: String?, message: MqttMessage?) {
+                            val payload = message?.payload ?: return
+                            val parsed = RadioPacket.parse(payload) ?: return
+                            onPacketReceived(parsed)
+                        }
+
+                        override fun deliveryComplete(token: IMqttDeliveryToken?) {}
+                    })
+
+                    client.connect(options)
+                    mqttClient = client
+                    isConnected = true
+                    onStatusChanged("MESH ACTIVE")
+                    subscribe()
+                    break
+                } catch (e: Exception) {
+                    attempt++
+                    Log.w("CloudMesh", "Connect attempt $attempt failed: ${e.message}")
+                    onStatusChanged("RETRYING MESH...")
+                    try {
+                        Thread.sleep(3000)
+                    } catch (_: InterruptedException) {
+                        break
+                    }
                 }
-
-                mqttClient?.setCallback(object : MqttCallbackExtended {
-                    override fun connectComplete(reconnect: Boolean, serverURI: String?) {
-                        isConnected = true
-                        onStatusChanged("CLOUD MESH ACTIVE")
-                        subscribe()
-                    }
-
-                    override fun connectionLost(cause: Throwable?) {
-                        isConnected = false
-                        onStatusChanged("CLOUD OFFLINE")
-                    }
-
-                    override fun messageArrived(topic: String?, message: MqttMessage?) {
-                        val payload = message?.payload ?: return
-                        val parsed = RadioPacket.parse(payload) ?: return
-                        onPacketReceived(parsed)
-                    }
-
-                    override fun deliveryComplete(token: IMqttDeliveryToken?) {}
-                })
-
-                mqttClient?.connect(options)
-            } catch (e: Exception) {
-                Log.e("CloudMesh", "Connect failed: ${e.message}")
-                onStatusChanged("RETRYING CLOUD...")
             }
         }.start()
     }
 
     private fun subscribe() {
-        if (!isConnected || mqttClient == null) return
+        val client = mqttClient ?: return
+        if (!isConnected) return
         try {
             val allCallTopic = "sentry/ptt/v1/allcall"
-            mqttClient?.subscribe(allCallTopic, 0)
+            client.subscribe(allCallTopic, 0)
 
             if (isAllCall) {
-                mqttClient?.subscribe("sentry/ptt/v1/ch/+", 0)
+                client.subscribe("sentry/ptt/v1/ch/+", 0)
             } else {
                 val padded = String.format("%03d", currentChannel)
-                mqttClient?.subscribe("sentry/ptt/v1/ch/$padded", 0)
+                client.subscribe("sentry/ptt/v1/ch/$padded", 0)
             }
         } catch (e: Exception) {
             Log.e("CloudMesh", "Subscribe error: ${e.message}")
@@ -80,10 +113,11 @@ class CloudMeshManager(
     fun setChannel(channel: Int) {
         val old = currentChannel
         currentChannel = channel
-        if (isConnected && mqttClient != null) {
+        val client = mqttClient
+        if (isConnected && client != null) {
             try {
                 val oldPadded = String.format("%03d", old)
-                mqttClient?.unsubscribe("sentry/ptt/v1/ch/$oldPadded")
+                client.unsubscribe("sentry/ptt/v1/ch/$oldPadded")
             } catch (_: Exception) {}
             subscribe()
         }
@@ -97,7 +131,8 @@ class CloudMeshManager(
     }
 
     fun sendPacket(packet: ByteArray) {
-        if (!isConnected || mqttClient == null) return
+        val client = mqttClient
+        if (!isConnected || client == null) return
         Thread {
             try {
                 val topic = if (isAllCall) {
@@ -107,7 +142,7 @@ class CloudMeshManager(
                     "sentry/ptt/v1/ch/$padded"
                 }
                 val msg = MqttMessage(packet).apply { qos = 0 }
-                mqttClient?.publish(topic, msg)
+                client.publish(topic, msg)
             } catch (e: Exception) {
                 Log.e("CloudMesh", "Publish error: ${e.message}")
             }
@@ -115,6 +150,7 @@ class CloudMeshManager(
     }
 
     fun disconnect() {
+        isRunning = false
         try {
             mqttClient?.disconnect()
             mqttClient?.close()
