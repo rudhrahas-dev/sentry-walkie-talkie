@@ -56,5 +56,14 @@ class WebAppInterface(private val getService: () -> SentryPttService?) {
     fun getStatus(): String = getService()?.currentStatus ?: "CONNECTING..."
 
     @JavascriptInterface
+    fun checkMicrophonePermission(): Boolean {
+        val service = getService() ?: return true
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            service,
+            android.Manifest.permission.RECORD_AUDIO
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    @JavascriptInterface
     fun isNativeApp(): Boolean = true
 }

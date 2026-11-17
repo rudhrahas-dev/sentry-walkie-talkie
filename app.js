@@ -609,6 +609,9 @@
     try { playChirp('ptt_press'); } catch (e) {}
     if (window.AndroidBridge) {
       try {
+        if (window.AndroidBridge.checkMicrophonePermission && !window.AndroidBridge.checkMicrophonePermission()) {
+          alert('Microphone permission is required on this car unit.\n\nPlease open Car Settings -> Apps -> Sentry PTT -> Permissions -> Allow Microphone.');
+        }
         window.AndroidBridge.startTransmitting();
       } catch (e) {
         console.warn('AndroidBridge startTransmitting error:', e);
@@ -656,10 +659,29 @@
     activeSpeakerDisplay.textContent = detailText;
   }
 
-  // Bind PTT Touch & Mouse events with cancellation protection
+  // Bind PTT Touch, Pointer & Mouse events with cancellation protection for car touchscreens
   pttButton.addEventListener('pointerdown', startTransmitting);
   window.addEventListener('pointerup', stopTransmitting);
   window.addEventListener('pointercancel', stopTransmitting);
+
+  // Dedicated touch events for car tablet screens
+  pttButton.addEventListener('touchstart', (e) => {
+    if (!state.isTransmitting) startTransmitting(e);
+  }, { passive: false });
+  window.addEventListener('touchend', (e) => {
+    if (state.isTransmitting) stopTransmitting(e);
+  }, { passive: false });
+  window.addEventListener('touchcancel', (e) => {
+    if (state.isTransmitting) stopTransmitting(e);
+  }, { passive: false });
+
+  // Mouse fallback
+  pttButton.addEventListener('mousedown', (e) => {
+    if (!state.isTransmitting) startTransmitting(e);
+  });
+  window.addEventListener('mouseup', (e) => {
+    if (state.isTransmitting) stopTransmitting(e);
+  });
   pttButton.addEventListener('contextmenu', (e) => e.preventDefault());
 
   // Desktop keyboard spacebar shortcut for PTT
