@@ -20,10 +20,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.sentry.ptt.bridge.WebAppInterface
 import com.sentry.ptt.radio.RadioPacket
+import com.sentry.ptt.update.AppUpdateManager
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
+    private lateinit var appUpdateManager: AppUpdateManager
     private var pttService: SentryPttService? = null
     private var isBound = false
     private var isVolumeKeyDown = false
@@ -92,6 +94,7 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_main)
 
+        appUpdateManager = AppUpdateManager(this)
         webView = findViewById(R.id.webView)
         checkAndRequestPermissions()
     }
@@ -150,10 +153,61 @@ class MainActivity : AppCompatActivity() {
                 webView.evaluateJavascript(
                     "if(window.onNativeStatus) window.onNativeStatus('$status');", null
                 )
+                // Automatically check for updates 3 seconds after webview loads
+                webView.postDelayed({
+                    checkForUpdates(silent = true)
+                }, 3000)
             }
         }
-        webView.addJavascriptInterface(WebAppInterface { pttService }, "AndroidBridge")
+        webView.addJavascriptInterface(WebAppInterface(this, { pttService }, appUpdateManager), "AndroidBridge")
         webView.loadUrl("file:///android_asset/web/index.html")
+    }
+
+    fun checkForUpdates(silent: Boolean = false) {
+        appUpdateManager.checkForUpdate { updateInfo ->
+            runOnUiThread {
+                if (updateInfo.hasUpdate) {
+                    val sanitizedNotes = updateInfo.releaseNotes
+                        .replace("\\", "\\\\")
+                        .replace("'", "\\'")
+                        .replace("\n", "\\n")
+                        .replace("\r", "")
+                    webView.evaluateJavascript(
+                        "if(window.onUpdateAvailable) window.onUpdateAvailable('${updateInfo.tagName}', '$sanitizedNotes');",
+                        null
+                    )
+                } else if (updateInfo.error != null && !silent) {
+                    webView.evaluateJavascript(
+                        "if(window.onUpdateError) window.onUpdateError('${updateInfo.error.replace("'", "\\'")}');",
+                        null
+                    )
+                } else if (!silent) {
+                    webView.evaluateJavascript(
+                        "if(window.onUpdateStatus) window.onUpdateStatus('latest');",
+                        null
+                    )
+                }
+            }
+        }
+    }
+
+    fun startUpdateDownload() {
+        appUpdateManager.downloadAndInstall(
+            this,
+            apkUrl = null,
+            onProgress = { percent ->
+                webView.evaluateJavascript(
+                    "if(window.onUpdateProgress) window.onUpdateProgress($percent);",
+                    null
+                )
+            },
+            onError = { error ->
+                webView.evaluateJavascript(
+                    "if(window.onUpdateError) window.onUpdateError('${error.replace("'", "\\'")}');",
+                    null
+                )
+            }
+        )
     }
 
     private fun startAndBindService() {

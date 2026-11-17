@@ -1130,6 +1130,103 @@
     }
   };
 
+  // ========================================================
+  // IN-APP OTA AUTO-UPDATER & BRIDGE INTEGRATION
+  // ========================================================
+  const updateBanner = document.getElementById('updateBanner');
+  const updateVersionTag = document.getElementById('updateVersionTag');
+  const updateDescText = document.getElementById('updateDescText');
+  const updateInstallBtn = document.getElementById('updateInstallBtn');
+  const updateProgressWrap = document.getElementById('updateProgressWrap');
+  const updateProgressBar = document.getElementById('updateProgressBar');
+  const updateProgressText = document.getElementById('updateProgressText');
+  const appVersionSection = document.getElementById('appVersionSection');
+  const appVersionDisplay = document.getElementById('appVersionDisplay');
+  const manualCheckUpdateBtn = document.getElementById('manualCheckUpdateBtn');
+  const updateStatusMsg = document.getElementById('updateStatusMsg');
+  const nativeApkSection = document.getElementById('nativeApkSection');
+
+  window.onUpdateAvailable = (tagName, releaseNotes) => {
+    console.log('[OTA] Update detected:', tagName, releaseNotes);
+    if (updateBanner) {
+      if (updateVersionTag) updateVersionTag.textContent = tagName;
+      if (updateDescText && releaseNotes) {
+        const firstLine = releaseNotes.split('\n')[0].replace(/^#+\s*/, '').trim();
+        updateDescText.textContent = firstLine || 'Bug fixes and performance improvements';
+      }
+      updateBanner.classList.remove('hidden');
+    }
+    if (updateStatusMsg) {
+      updateStatusMsg.style.display = 'block';
+      updateStatusMsg.style.color = 'var(--neon-orange)';
+      updateStatusMsg.textContent = `New release ${tagName} available!`;
+    }
+  };
+
+  window.onUpdateProgress = (percent) => {
+    if (updateProgressWrap) updateProgressWrap.classList.remove('hidden');
+    if (updateProgressBar) updateProgressBar.style.width = percent + '%';
+    if (updateProgressText) updateProgressText.textContent = `DOWNLOADING ${percent}%`;
+    if (updateInstallBtn) {
+      updateInstallBtn.disabled = true;
+      updateInstallBtn.textContent = `${percent}%`;
+    }
+  };
+
+  window.onUpdateError = (errMsg) => {
+    console.error('[OTA] Update error:', errMsg);
+    if (updateProgressWrap) updateProgressWrap.classList.add('hidden');
+    if (updateInstallBtn) {
+      updateInstallBtn.disabled = false;
+      updateInstallBtn.textContent = 'RETRY';
+    }
+    if (updateStatusMsg) {
+      updateStatusMsg.style.display = 'block';
+      updateStatusMsg.style.color = 'var(--neon-red)';
+      updateStatusMsg.textContent = 'Update check failed: ' + errMsg;
+    }
+  };
+
+  window.onUpdateStatus = (status) => {
+    if (status === 'latest' && updateStatusMsg) {
+      updateStatusMsg.style.display = 'block';
+      updateStatusMsg.style.color = 'var(--neon-green)';
+      updateStatusMsg.textContent = 'App is up to date (latest build).';
+    }
+  };
+
+  if (updateInstallBtn) {
+    updateInstallBtn.addEventListener('click', () => {
+      if (window.AndroidBridge && window.AndroidBridge.startUpdateDownload) {
+        if (updateProgressWrap) updateProgressWrap.classList.remove('hidden');
+        if (updateProgressBar) updateProgressBar.style.width = '0%';
+        if (updateProgressText) updateProgressText.textContent = 'CONNECTING...';
+        updateInstallBtn.disabled = true;
+        updateInstallBtn.textContent = '...';
+        window.AndroidBridge.startUpdateDownload();
+      }
+    });
+  }
+
+  if (manualCheckUpdateBtn) {
+    manualCheckUpdateBtn.addEventListener('click', () => {
+      if (window.AndroidBridge && window.AndroidBridge.checkForUpdates) {
+        if (updateStatusMsg) {
+          updateStatusMsg.style.display = 'block';
+          updateStatusMsg.style.color = 'var(--neon-cyan)';
+          updateStatusMsg.textContent = 'Querying tactical update server...';
+        }
+        window.AndroidBridge.checkForUpdates();
+      } else {
+        if (updateStatusMsg) {
+          updateStatusMsg.style.display = 'block';
+          updateStatusMsg.style.color = 'var(--neon-green)';
+          updateStatusMsg.textContent = 'PWA Web Version is always up to date.';
+        }
+      }
+    });
+  }
+
   // Initialize UI values
   callsignDisplay.textContent = state.callsign;
   volumeSlider.value = state.volume;
@@ -1142,6 +1239,17 @@
 
   // Check if running inside Android Native App WebView
   if (window.AndroidBridge) {
+    if (nativeApkSection) nativeApkSection.style.display = 'none';
+    if (transceiverModeSection) transceiverModeSection.style.display = 'block';
+    if (appVersionSection) appVersionSection.style.display = 'block';
+
+    if (appVersionDisplay) {
+      try {
+        const ver = window.AndroidBridge.getAppVersion ? window.AndroidBridge.getAppVersion() : '1.0.0';
+        appVersionDisplay.textContent = 'v' + ver + ' (Native Android)';
+      } catch (e) {}
+    }
+
     // Native app auto-dismisses start overlay
     setTimeout(() => {
       startOverlay.classList.add('fade-out');
@@ -1165,6 +1273,10 @@
       console.warn('Native bridge sync error:', e);
     }
   } else {
+    if (transceiverModeSection) transceiverModeSection.style.display = 'none';
+    if (appVersionSection) appVersionSection.style.display = 'none';
+    if (nativeApkSection) nativeApkSection.style.display = 'block';
+
     // In browser / PWA mode, connect via JS Paho MQTT
     connectMqtt();
   }

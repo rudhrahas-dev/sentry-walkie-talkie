@@ -1222,3 +1222,126 @@ body {
   transform: translateY(-1px);
 }
 
+/* ======================================================== */
+/* OTA UPDATE BANNER & PROGRESS                             */
+/* ======================================================== */
+.update-banner {
+  background: linear-gradient(135deg, rgba(255, 159, 67, 0.18), rgba(0, 229, 255, 0.1));
+  border: 1px solid var(--neon-orange);
+  box-shadow: 0 0 16px rgba(255, 159, 67, 0.3);
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+  animation: pulse-update 2.5s infinite ease-in-out;
+  transition: all 0.3s ease;
+}
+
+.update-banner.hidden {
+  display: none !important;
+}
+
+@keyframes pulse-update {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 159, 67, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(255, 159, 67, 0.5);
+  }
+}
+
+.update-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.update-icon {
+  font-size: 1.25rem;
+  color: var(--neon-orange);
+  flex-shrink: 0;
+}
+
+.update-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-grow: 1;
+}
+
+.update-title {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--neon-orange);
+  letter-spacing: 0.05em;
+}
+
+.update-desc {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  max-width: 190px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.update-action-btn {
+  background: var(--neon-orange);
+  color: #0a0c10;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.1s, background 0.15s;
+}
+
+.update-action-btn:active {
+  transform: scale(0.96);
+  background: #ffb86c;
+}
+
+.update-progress-wrap {
+  position: relative;
+  width: 100%;
+  height: 18px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 159, 67, 0.4);
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.update-progress-wrap.hidden {
+  display: none !important;
+}
+
+.update-progress-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, var(--neon-orange), var(--neon-cyan));
+  transition: width 0.2s ease-out;
+}
+
+.update-progress-text {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+

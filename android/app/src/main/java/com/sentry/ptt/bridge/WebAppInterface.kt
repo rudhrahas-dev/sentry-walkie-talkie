@@ -1,9 +1,15 @@
 package com.sentry.ptt.bridge
 
 import android.webkit.JavascriptInterface
+import com.sentry.ptt.MainActivity
 import com.sentry.ptt.SentryPttService
+import com.sentry.ptt.update.AppUpdateManager
 
-class WebAppInterface(private val getService: () -> SentryPttService?) {
+class WebAppInterface(
+    private val activity: MainActivity,
+    private val getService: () -> SentryPttService?,
+    private val appUpdateManager: AppUpdateManager
+) {
 
     @JavascriptInterface
     fun startTransmitting() {
@@ -66,4 +72,17 @@ class WebAppInterface(private val getService: () -> SentryPttService?) {
 
     @JavascriptInterface
     fun isNativeApp(): Boolean = true
+
+    @JavascriptInterface
+    fun getAppVersion(): String = appUpdateManager.currentVersionName
+
+    @JavascriptInterface
+    fun checkForUpdates() {
+        activity.checkForUpdates(silent = false)
+    }
+
+    @JavascriptInterface
+    fun startUpdateDownload() {
+        activity.startUpdateDownload()
+    }
 }

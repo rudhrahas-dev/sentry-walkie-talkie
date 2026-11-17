@@ -37,6 +37,12 @@
         <span class="btn-text">INITIALIZE COMMS</span>
       </button>
       <div class="start-hint">Microphone permission required for PTT</div>
+
+      <div style="margin-top: 14px; text-align: center;">
+        <a href="sentry-ptt.apk" download class="apk-download-btn" title="Download Native Android APK for Pocket Mode & Off-Grid Mesh">
+          <span>🤖 DOWNLOAD NATIVE ANDROID APK</span>
+        </a>
+      </div>
     </div>
   </div>
 
@@ -45,6 +51,24 @@
   <!-- ======================================================== -->
   <div class="cockpit-container">
     
+    <!-- OTA Auto-Update Banner (Displayed when update is detected) -->
+    <div id="updateBanner" class="update-banner hidden">
+      <div class="update-content">
+        <div class="update-icon">⚡</div>
+        <div class="update-info">
+          <div class="update-title">UPDATE AVAILABLE: <span id="updateVersionTag">v1.0.1</span></div>
+          <div class="update-desc" id="updateDescText">Tap to install latest tactical release</div>
+        </div>
+        <button id="updateInstallBtn" class="update-action-btn">
+          UPDATE
+        </button>
+      </div>
+      <div id="updateProgressWrap" class="update-progress-wrap hidden">
+        <div class="update-progress-bar" id="updateProgressBar" style="width: 0%;"></div>
+        <span class="update-progress-text" id="updateProgressText">DOWNLOADING 0%</span>
+      </div>
+    </div>
+
     <!-- Top Cockpit Header -->
     <header class="cockpit-header">
       <div class="header-left">
@@ -284,6 +308,22 @@
         <input type="password" id="squadPinInput" class="config-input mono" maxlength="8" placeholder="e.g. 1337 (Leave blank for public)">
       </div>
 
+      <div class="config-section">
+        <label class="config-label">TACTICAL MESH BROKER</label>
+        <select id="brokerSelect" class="config-select">
+          <option value="hivemq" selected>HiveMQ Public Mesh (Global / SSL 8884)</option>
+          <option value="emqx">EMQX Public Mesh (Global / SSL 8084)</option>
+        </select>
+      </div>
+
+      <div class="config-section">
+        <div class="status-summary">
+          <div>PEER ID: <span id="localPeerId" class="mono text-cyan">---</span></div>
+          <div>AUDIO CODEC: <span class="mono text-green">16 kHz Low-Latency PCM</span></div>
+          <div>ENCRYPTION: <span class="mono text-gold">AES / Transport TLS</span></div>
+        </div>
+      </div>
+
       <div class="config-section" id="transceiverModeSection">
         <label class="config-label">RADIO TRANSCEIVER ARCHITECTURE</label>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
@@ -301,20 +341,24 @@
         </div>
       </div>
 
-      <div class="config-section">
-        <label class="config-label">TACTICAL MESH BROKER</label>
-        <select id="brokerSelect" class="config-select">
-          <option value="hivemq" selected>HiveMQ Public Mesh (Global / SSL 8884)</option>
-          <option value="emqx">EMQX Public Mesh (Global / SSL 8084)</option>
-        </select>
+      <div class="config-section" id="appVersionSection">
+        <label class="config-label">SOFTWARE VERSION & UPDATES</label>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-family: var(--font-mono); font-size: 0.8rem;">
+          <span style="color: var(--text-muted);">BUILD:</span>
+          <span id="appVersionDisplay" style="color: var(--neon-cyan); font-weight: bold;">v1.0.1 (Native)</span>
+        </div>
+        <button type="button" id="manualCheckUpdateBtn" class="modal-primary-btn" style="margin-top: 8px; background: rgba(0, 229, 255, 0.12); border: 1px solid var(--neon-cyan); color: var(--neon-cyan); font-size: 0.75rem; padding: 10px;">
+          🔍 CHECK FOR UPDATES
+        </button>
+        <div id="updateStatusMsg" class="pin-subtext" style="margin-top: 6px; display: none;"></div>
       </div>
 
-      <div class="config-section">
-        <div class="status-summary">
-          <div>PEER ID: <span id="localPeerId" class="mono text-cyan">---</span></div>
-          <div>AUDIO CODEC: <span class="mono text-green">16 kHz Low-Latency PCM</span></div>
-          <div>ENCRYPTION: <span class="mono text-gold">AES / Transport TLS</span></div>
-        </div>
+      <div class="config-section" id="nativeApkSection">
+        <label class="config-label">NATIVE ANDROID APP (.APK)</label>
+        <div class="pin-subtext">Install the standalone Android application for physical Volume Key PTT, background pocket mode (screen-off), and off-grid Bluetooth / Wi-Fi Direct radio mesh.</div>
+        <a href="sentry-ptt.apk" download class="modal-primary-btn" style="display: block; text-align: center; text-decoration: none; margin-top: 8px; background: rgba(0, 229, 255, 0.15); border: 1px solid var(--neon-cyan); color: var(--neon-cyan);">
+          ⬇️ DOWNLOAD NATIVE APK (v1.0.1)
+        </a>
       </div>
 
       <button id="saveSettingsBtn" class="modal-primary-btn">APPLY CONFIGURATION</button>
