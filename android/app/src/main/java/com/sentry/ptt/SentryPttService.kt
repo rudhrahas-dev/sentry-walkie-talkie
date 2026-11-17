@@ -140,33 +140,42 @@ class SentryPttService : Service() {
         if (isTransmitting) return
         isTransmitting = true
 
-        sequenceNum = (sequenceNum + 1).toShort()
-        val startPacket = RadioPacket.build(
-            type = RadioPacket.TYPE_PTT_START,
-            channel = currentChannel,
-            pinHash = RadioPacket.computePinHash(squadPin),
-            callsign = callsign,
-            sequence = sequenceNum
-        )
-        broadcastPacket(startPacket)
-        audioRecorder?.start()
+        try {
+            sequenceNum = (sequenceNum + 1).toShort()
+            val startPacket = RadioPacket.build(
+                type = RadioPacket.TYPE_PTT_START,
+                channel = currentChannel,
+                pinHash = RadioPacket.computePinHash(squadPin),
+                callsign = callsign,
+                sequence = sequenceNum
+            )
+            broadcastPacket(startPacket)
+            audioRecorder?.start()
+        } catch (t: Throwable) {
+            android.util.Log.e("SentryPttService", "startTransmitting error: ${t.message}")
+        }
     }
 
     fun stopTransmitting() {
         if (!isTransmitting) return
         isTransmitting = false
-        audioRecorder?.stop()
 
-        sequenceNum = (sequenceNum + 1).toShort()
-        val endPacket = RadioPacket.build(
-            type = RadioPacket.TYPE_PTT_END,
-            channel = currentChannel,
-            pinHash = RadioPacket.computePinHash(squadPin),
-            callsign = callsign,
-            sequence = sequenceNum
-        )
-        broadcastPacket(endPacket)
-        audioPlayer?.playRogerBeep()
+        try {
+            audioRecorder?.stop()
+
+            sequenceNum = (sequenceNum + 1).toShort()
+            val endPacket = RadioPacket.build(
+                type = RadioPacket.TYPE_PTT_END,
+                channel = currentChannel,
+                pinHash = RadioPacket.computePinHash(squadPin),
+                callsign = callsign,
+                sequence = sequenceNum
+            )
+            broadcastPacket(endPacket)
+            audioPlayer?.playRogerBeep()
+        } catch (t: Throwable) {
+            android.util.Log.e("SentryPttService", "stopTransmitting error: ${t.message}")
+        }
     }
 
     fun setChannel(channel: Int) {

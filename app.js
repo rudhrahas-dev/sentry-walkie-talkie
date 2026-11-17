@@ -606,9 +606,13 @@
     pttSubText.textContent = 'TRANSMITTING (LIVE)';
     updateTransceiverUI('transmitting', `TX: CH-${String(state.channel).padStart(3, '0')} (BROADCASTING)`);
     
-    playChirp('ptt_press');
+    try { playChirp('ptt_press'); } catch (e) {}
     if (window.AndroidBridge) {
-      window.AndroidBridge.startTransmitting();
+      try {
+        window.AndroidBridge.startTransmitting();
+      } catch (e) {
+        console.warn('AndroidBridge startTransmitting error:', e);
+      }
     } else {
       sendControlPacket(0x01); // PTT_START
     }
@@ -629,11 +633,15 @@
     updateTransceiverUI('standby', 'SQUELCH CLOSED');
     
     if (window.AndroidBridge) {
-      window.AndroidBridge.stopTransmitting();
+      try {
+        window.AndroidBridge.stopTransmitting();
+      } catch (e) {
+        console.warn('AndroidBridge stopTransmitting error:', e);
+      }
     } else {
       sendControlPacket(0x03); // PTT_END
     }
-    playChirp('ptt_release');
+    try { playChirp('ptt_release'); } catch (e) {}
   }
 
   function updateTransceiverUI(mode, detailText) {

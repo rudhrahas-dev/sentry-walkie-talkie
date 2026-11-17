@@ -165,8 +165,12 @@ class MainActivity : AppCompatActivity() {
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN && !isVolumeKeyDown) {
             isVolumeKeyDown = true
-            pttService?.startTransmitting()
-            webView.evaluateJavascript("if(window.onNativePtt) window.onNativePtt(true);", null)
+            try {
+                pttService?.startTransmitting()
+                webView.evaluateJavascript("if(window.onNativePtt) window.onNativePtt(true);", null)
+            } catch (t: Throwable) {
+                android.util.Log.e("MainActivity", "onKeyDown error: ${t.message}")
+            }
             return true
         }
         return super.onKeyDown(keyCode, event)
@@ -175,8 +179,12 @@ class MainActivity : AppCompatActivity() {
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN && isVolumeKeyDown) {
             isVolumeKeyDown = false
-            pttService?.stopTransmitting()
-            webView.evaluateJavascript("if(window.onNativePtt) window.onNativePtt(false);", null)
+            try {
+                pttService?.stopTransmitting()
+                webView.evaluateJavascript("if(window.onNativePtt) window.onNativePtt(false);", null)
+            } catch (t: Throwable) {
+                android.util.Log.e("MainActivity", "onKeyUp error: ${t.message}")
+            }
             return true
         }
         return super.onKeyUp(keyCode, event)

@@ -6,6 +6,7 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.util.UUID
+import java.util.concurrent.Executors
 
 class CloudMeshManager(
     private val onPacketReceived: (ParsedPacket) -> Unit,
@@ -14,6 +15,7 @@ class CloudMeshManager(
 
     private var mqttClient: MqttClient? = null
     private val clientId = "sentry_android_" + UUID.randomUUID().toString().take(8)
+    private val sendExecutor = Executors.newSingleThreadExecutor()
     
     private var currentChannel: Int = 42
     private var isAllCall: Boolean = false
@@ -131,22 +133,27 @@ class CloudMeshManager(
     }
 
     fun sendPacket(packet: ByteArray) {
-        val client = mqttClient
-        if (!isConnected || client == null) return
-        Thread {
-            try {
-                val topic = if (isAllCall) {
-                    "sentry/ptt/v1/allcall"
-                } else {
-                    val padded = String.format("%03d", currentChannel)
-                    "sentry/ptt/v1/ch/$padded"
+        if (!isConnected || mqttClient == null) return
+        try {
+            sendExecutor.execute {
+                try {
+                    val client = mqttClient ?: return@execute
+                    if (!isConnected) return@execute
+                    val topic = if (isAllCall) {
+                        "sentry/ptt/v1/allcall"
+                    } else {
+                        val padded = String.format("%03d", currentChannel)
+                        "sentry/ptt/v1/ch/$padded"
+                    }
+                    val msg = MqttMessage(packet).apply { qos = 0 }
+                    client.publish(topic, msg)
+                } catch (t: Throwable) {
+                    Log.w("CloudMesh", "Publish warning: ${t.message}")
                 }
-                val msg = MqttMessage(packet).apply { qos = 0 }
-                client.publish(topic, msg)
-            } catch (e: Exception) {
-                Log.e("CloudMesh", "Publish error: ${e.message}")
             }
-        }.start()
+        } catch (t: Throwable) {
+            Log.w("CloudMesh", "SendExecutor warning: ${t.message}")
+        }
     }
 
     fun disconnect() {
@@ -156,6 +163,6 @@ class CloudMeshManager(
             mqttClient?.close()
             mqttClient = null
             isConnected = false
-        } catch (_: Exception) {}
+        } catch (_: Throwable) {}
     }
 }
