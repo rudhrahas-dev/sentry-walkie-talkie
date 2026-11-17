@@ -123,7 +123,13 @@ class MainActivity : AppCompatActivity() {
             cacheMode = WebSettings.LOAD_NO_CACHE
         }
 
-        webView.webChromeClient = WebChromeClient()
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onPermissionRequest(request: android.webkit.PermissionRequest?) {
+                runOnUiThread {
+                    request?.grant(request.resources)
+                }
+            }
+        }
         webView.webViewClient = WebViewClient()
         webView.addJavascriptInterface(WebAppInterface { pttService }, "AndroidBridge")
         webView.loadUrl("file:///android_asset/web/index.html")

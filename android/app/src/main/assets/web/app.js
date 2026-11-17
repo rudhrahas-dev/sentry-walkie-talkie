@@ -127,6 +127,14 @@
     masterGain.connect(analyser);
     analyser.connect(audioCtx.destination);
     
+    // In Native Android App, native Kotlin AudioRecord handles microphone capture directly!
+    if (window.AndroidBridge) {
+      state.isAudioInitialized = true;
+      startOscilloscope();
+      playChirp('activate');
+      return;
+    }
+
     // Request Microphone access with fallback for strict Android hardware
     try {
       try {
@@ -581,7 +589,9 @@
     }
     
     if (state.isTransmitting) return;
-    if (!state.isAudioInitialized) {
+    if (window.AndroidBridge) {
+      state.isAudioInitialized = true;
+    } else if (!state.isAudioInitialized) {
       initAudioEngine();
       return;
     }

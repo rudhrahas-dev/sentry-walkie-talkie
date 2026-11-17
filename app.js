@@ -127,6 +127,14 @@
     masterGain.connect(analyser);
     analyser.connect(audioCtx.destination);
     
+    // In Native Android App, native Kotlin AudioRecord handles microphone capture directly!
+    if (window.AndroidBridge) {
+      state.isAudioInitialized = true;
+      startOscilloscope();
+      playChirp('activate');
+      return;
+    }
+
     // Request Microphone access with fallback for strict Android hardware
     try {
       try {
@@ -581,7 +589,9 @@
     }
     
     if (state.isTransmitting) return;
-    if (!state.isAudioInitialized) {
+    if (window.AndroidBridge) {
+      state.isAudioInitialized = true;
+    } else if (!state.isAudioInitialized) {
       initAudioEngine();
       return;
     }
@@ -597,7 +607,11 @@
     updateTransceiverUI('transmitting', `TX: CH-${String(state.channel).padStart(3, '0')} (BROADCASTING)`);
     
     playChirp('ptt_press');
-    sendControlPacket(0x01); // PTT_START
+    if (window.AndroidBridge) {
+      window.AndroidBridge.startTransmitting();
+    } else {
+      sendControlPacket(0x01); // PTT_START
+    }
   }
 
   function stopTransmitting(e) {
@@ -614,7 +628,11 @@
     pttSubText.textContent = 'TRANSMIT (TX)';
     updateTransceiverUI('standby', 'SQUELCH CLOSED');
     
-    sendControlPacket(0x03); // PTT_END
+    if (window.AndroidBridge) {
+      window.AndroidBridge.stopTransmitting();
+    } else {
+      sendControlPacket(0x03); // PTT_END
+    }
     playChirp('ptt_release');
   }
 
@@ -661,6 +679,9 @@
     
     updateChannelDisplay();
     resubscribeChannels(oldCh);
+    if (window.AndroidBridge) {
+      window.AndroidBridge.setChannel(state.channel);
+    }
     
     if (!suppressAudio) playChirp('channel_click');
   }
@@ -707,6 +728,9 @@
     }
     
     resubscribeChannels();
+    if (window.AndroidBridge) {
+      window.AndroidBridge.setMode(newMode === 'all-call');
+    }
     playChirp('channel_click');
   }
 
@@ -1011,6 +1035,64 @@
     }, 400);
   });
 
+  // ========================================================
+  // TRANSCEIVER ARCHITECTURE (CLOUD VS OFF-GRID)
+  // ========================================================
+  const transceiverCloudBtn = document.getElementById('transceiverCloudBtn');
+  const transceiverOffgridBtn = document.getElementById('transceiverOffgridBtn');
+  const transceiverHintText = document.getElementById('transceiverHintText');
+
+  function setTransceiverArchitecture(mode) {
+    if (mode === 'offgrid') {
+      transceiverOffgridBtn?.classList.add('active');
+      transceiverCloudBtn?.classList.remove('active');
+      if (transceiverHintText) {
+        transceiverHintText.textContent = 'Off-Grid Direct Radio active (Google Nearby BLE + Wi-Fi Direct). No internet or cellular needed.';
+      }
+      if (window.AndroidBridge) {
+        window.AndroidBridge.setTransceiver('offgrid');
+      }
+    } else {
+      transceiverCloudBtn?.classList.add('active');
+      transceiverOffgridBtn?.classList.remove('active');
+      if (transceiverHintText) {
+        transceiverHintText.textContent = 'Cloud Mesh provides worldwide voice comms interoperable with Web browsers and Apple iPhones.';
+      }
+      if (window.AndroidBridge) {
+        window.AndroidBridge.setTransceiver('cloud');
+      }
+    }
+    playChirp('channel_click');
+  }
+
+  transceiverCloudBtn?.addEventListener('click', () => setTransceiverArchitecture('cloud'));
+  transceiverOffgridBtn?.addEventListener('click', () => setTransceiverArchitecture('offgrid'));
+
+  // ========================================================
+  // NATIVE ANDROID BRIDGE CALLBACKS
+  // ========================================================
+  window.onNativeState = (mode, callsign, ch) => {
+    if (mode === 'receiving') {
+      updateTransceiverUI('receiving', `RX: ${callsign} on CH-${ch}`);
+      state.isReceiving = true;
+    } else {
+      updateTransceiverUI('standby', 'SQUELCH CLOSED');
+      state.isReceiving = false;
+    }
+  };
+
+  window.onNativeStatus = (statusText) => {
+    updateNetStatus('online', statusText);
+  };
+
+  window.onNativePtt = (isDown) => {
+    if (isDown) {
+      startTransmitting();
+    } else {
+      stopTransmitting();
+    }
+  };
+
   // Initialize UI values
   callsignDisplay.textContent = state.callsign;
   volumeSlider.value = state.volume;
@@ -1020,9 +1102,32 @@
   setMode(state.mode);
   updateSquadSecurityUI();
   updateWakeLockUI(state.alwaysOn);
-  
-  // Start networking
-  connectMqtt();
+
+  // Check if running inside Android Native App WebView
+  if (window.AndroidBridge) {
+    // Native app auto-dismisses start overlay
+    setTimeout(() => {
+      startOverlay.classList.add('fade-out');
+      setTimeout(() => {
+        startOverlay.style.display = 'none';
+      }, 400);
+      initAudioEngine().catch(() => {});
+    }, 300);
+
+    // Sync state with native service
+    try {
+      window.AndroidBridge.setCallsign(state.callsign);
+      window.AndroidBridge.setSquadPin(state.squadPin);
+      window.AndroidBridge.setChannel(state.channel);
+      window.AndroidBridge.setMode(state.mode === 'all-call');
+      window.AndroidBridge.setVolume(state.volume);
+    } catch (e) {
+      console.warn('Native bridge sync error:', e);
+    }
+  } else {
+    // In browser / PWA mode, connect via JS Paho MQTT
+    connectMqtt();
+  }
 
   // Test / preview helper
   if (new URLSearchParams(location.search).has('autostart')) {
