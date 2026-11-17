@@ -85,6 +85,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            android.util.Log.e("SentryPTT", "FATAL CAUGHT: ${throwable.message}", throwable)
+        }
+
         setContentView(R.layout.activity_main)
 
         webView = findViewById(R.id.webView)

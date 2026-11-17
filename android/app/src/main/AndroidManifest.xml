@@ -53,7 +53,7 @@
         <service
             android:name=".SentryPttService"
             android:exported="false"
-            android:foregroundServiceType="microphone|connectedDevice" />
+            android:foregroundServiceType="microphone" />
 
     </application>
 

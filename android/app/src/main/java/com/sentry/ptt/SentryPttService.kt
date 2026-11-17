@@ -102,9 +102,15 @@ class SentryPttService : Service() {
         )
     }
 
+    private fun isSelfPacket(packet: ParsedPacket): Boolean {
+        val myCallsign = callsign.take(8).trim()
+        val packetCallsign = packet.callsign.take(8).trim()
+        return myCallsign.equals(packetCallsign, ignoreCase = true)
+    }
+
     private fun handleIncomingPacket(packet: ParsedPacket) {
         // Discard self broadcast
-        if (packet.callsign == callsign) return
+        if (isSelfPacket(packet)) return
 
         // PIN validation
         val myPinHash = RadioPacket.computePinHash(squadPin)
@@ -225,14 +231,20 @@ class SentryPttService : Service() {
         }
 
         val notification = buildNotification(channelId)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                1337,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
-            )
-        } else {
-            startForeground(1337, notification)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                startForeground(
+                    1337,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                )
+            } else {
+                startForeground(1337, notification)
+            }
+        } catch (t: Throwable) {
+            try {
+                startForeground(1337, notification)
+            } catch (_: Throwable) {}
         }
     }
 

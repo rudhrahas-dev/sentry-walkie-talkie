@@ -12,7 +12,6 @@ class AudioPlayer(private val context: Context) {
 
     private val sampleRate = 16000
     private var audioTrack: AudioTrack? = null
-    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var volumeMultiplier = 1.0f
     private var isSpeakerEnabled = true
 
@@ -21,61 +20,68 @@ class AudioPlayer(private val context: Context) {
     }
 
     private fun initTrack() {
-        val minBuf = AudioTrack.getMinBufferSize(
-            sampleRate,
-            AudioFormat.CHANNEL_OUT_MONO,
-            AudioFormat.ENCODING_PCM_16BIT
-        )
-        val bufferSize = (minBuf * 2).coerceAtLeast(4096)
-
-        val attributes = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-            .build()
-
-        val format = AudioFormat.Builder()
-            .setSampleRate(sampleRate)
-            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-            .build()
-
-        audioTrack = AudioTrack(
-            attributes,
-            format,
-            bufferSize,
-            AudioTrack.MODE_STREAM,
-            AudioManager.AUDIO_SESSION_ID_GENERATE
-        )
-
-        // Route to speakerphone
         try {
-            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-            audioManager.isSpeakerphoneOn = true
-        } catch (e: Exception) {
-            Log.w("AudioPlayer", "Speakerphone routing warning: ${e.message}")
-        }
+            val minBuf = AudioTrack.getMinBufferSize(
+                sampleRate,
+                AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_16BIT
+            )
+            val bufferSize = if (minBuf > 0) (minBuf * 2).coerceAtLeast(4096) else 4096
 
-        audioTrack?.play()
+            val attributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+
+            val format = AudioFormat.Builder()
+                .setSampleRate(sampleRate)
+                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                .build()
+
+            audioTrack = AudioTrack(
+                attributes,
+                format,
+                bufferSize,
+                AudioTrack.MODE_STREAM,
+                AudioManager.AUDIO_SESSION_ID_GENERATE
+            )
+
+            if (audioTrack?.state == AudioTrack.STATE_INITIALIZED) {
+                audioTrack?.play()
+            } else {
+                Log.w("AudioPlayer", "AudioTrack failed to initialize")
+            }
+        } catch (t: Throwable) {
+            Log.e("AudioPlayer", "Error initializing AudioTrack: ${t.message}")
+        }
     }
 
     fun playAudio(pcmData: ByteArray) {
         if (!isSpeakerEnabled || pcmData.isEmpty()) return
 
-        if (audioTrack == null || audioTrack?.state != AudioTrack.STATE_INITIALIZED) {
-            initTrack()
-        }
-
         try {
-            // Apply volume multiplier if not 1.0
+            if (audioTrack == null || audioTrack?.state != AudioTrack.STATE_INITIALIZED) {
+                initTrack()
+            }
+
+            val track = audioTrack ?: return
+            if (track.state != AudioTrack.STATE_INITIALIZED) return
+
+            // Ensure playing
+            if (track.playState != AudioTrack.PLAYSTATE_PLAYING) {
+                try { track.play() } catch (_: Throwable) {}
+            }
+
             val dataToWrite = if (volumeMultiplier != 1.0f) {
                 applyVolume(pcmData, volumeMultiplier)
             } else {
                 pcmData
             }
 
-            audioTrack?.write(dataToWrite, 0, dataToWrite.size)
-        } catch (e: Exception) {
-            Log.e("AudioPlayer", "Error writing to AudioTrack: ${e.message}")
+            track.write(dataToWrite, 0, dataToWrite.size)
+        } catch (t: Throwable) {
+            Log.e("AudioPlayer", "Error writing to AudioTrack: ${t.message}")
         }
     }
 
@@ -93,22 +99,26 @@ class AudioPlayer(private val context: Context) {
     }
 
     fun playRogerBeep() {
-        Thread {
-            val durationMs = 120
-            val numSamples = (sampleRate * (durationMs / 1000.0)).toInt()
-            val pcm = ByteArray(numSamples * 2)
+        Thread({
+            try {
+                val durationMs = 120
+                val numSamples = (sampleRate * (durationMs / 1000.0)).toInt()
+                val pcm = ByteArray(numSamples * 2)
 
-            for (i in 0 until numSamples) {
-                val t = i.toDouble() / sampleRate
-                val freq = if (i < numSamples / 2) 1209.0 else 1633.0
-                val angle = 2.0 * Math.PI * freq * t
-                val sample = (sin(angle) * 10000).toInt().toShort()
+                for (i in 0 until numSamples) {
+                    val t = i.toDouble() / sampleRate
+                    val freq = if (i < numSamples / 2) 1209.0 else 1633.0
+                    val angle = 2.0 * Math.PI * freq * t
+                    val sample = (sin(angle) * 10000).toInt().toShort()
 
-                pcm[i * 2] = (sample.toInt() and 0xFF).toByte()
-                pcm[i * 2 + 1] = ((sample.toInt() shr 8) and 0xFF).toByte()
+                    pcm[i * 2] = (sample.toInt() and 0xFF).toByte()
+                    pcm[i * 2 + 1] = ((sample.toInt() shr 8) and 0xFF).toByte()
+                }
+                playAudio(pcm)
+            } catch (t: Throwable) {
+                Log.w("AudioPlayer", "Roger beep error: ${t.message}")
             }
-            playAudio(pcm)
-        }.start()
+        }, "SentryPTT-RogerBeep").start()
     }
 
     fun setVolume(percent: Int) {
@@ -124,8 +134,8 @@ class AudioPlayer(private val context: Context) {
             audioTrack?.stop()
             audioTrack?.release()
             audioTrack = null
-        } catch (e: Exception) {
-            Log.e("AudioPlayer", "Error releasing AudioTrack: ${e.message}")
+        } catch (t: Throwable) {
+            Log.e("AudioPlayer", "Error releasing AudioTrack: ${t.message}")
         }
     }
 }
